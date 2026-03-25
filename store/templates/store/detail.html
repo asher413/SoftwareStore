@@ -1,0 +1,140 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<div class="container mt-5 text-end" style="font-family: 'Assistant', sans-serif;">
+    <div class="row">
+        <div class="col-md-7 mb-4">
+            <div class="position-relative shadow-lg rounded-4 overflow-hidden border border-secondary" style="height: 400px;">
+                {% if software.image_url %}
+                    <img src="{{ software.image_url }}" class="w-100 h-100" style="object-fit: cover;">
+                {% else %}
+                    <div class="d-flex align-items-center justify-content-center h-100 bg-dark text-white">
+                        <i class="fas fa-laptop-code fa-5x text-orange"></i>
+                    </div>
+                {% endif %}
+                <div class="position-absolute bottom-0 start-0 w-100 p-3" style="background: linear-gradient(transparent, rgba(0,0,0,0.9));">
+                    <h2 class="text-white">{{ software.title }} - ממשק עבודה מקוון</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <h1 class="display-4 fw-bold text-orange" style="color: #ff5e00 !important;">{{ software.title }}</h1>
+            <p class="lead text-white mt-3" style="color: #ffffff !important; text-shadow: 1px 1px 2px #000;">
+                {{ software.description }}
+            </p>
+            
+            <div class="my-4 p-4 rounded-3" style="background: rgba(255,255,255,0.05); border-right: 4px solid #ff5e00;">
+                <h4 class="text-white mb-3">📋 מפרט טכני ורישוי</h4>
+                <ul class="list-unstyled text-white">
+                    <li class="mb-2"><i class="fas fa-check-circle text-orange me-2"></i> גרסה: 2.5.4 (עדכון 2026)</li>
+                    <li class="mb-2"><i class="fas fa-globe text-orange me-2"></i> סוג רישיון: <b>שימוש בענן (SaaS)</b></li>
+                    <li class="mb-2"><i class="fas fa-shield-alt text-orange me-2"></i> אבטחה: הצפנת AES-256</li>
+                    <li class="mb-2"><i class="fas fa-clock text-orange me-2"></i> תוקף: מנוי חודשי מתחדש</li>
+                </ul>
+            </div>
+
+            <div class="d-grid gap-3">
+                <a href="{% url 'add_to_cart' software.pk %}" class="btn btn-tech btn-lg shadow-orange fw-bold py-3">
+                    <i class="fas fa-cart-plus me-2"></i> הוסף לעגלה - ₪{{ software.price }}
+                </a>
+
+                <a href="{% url 'run_software' software.pk %}" class="btn btn-outline-orange btn-lg py-2">
+                    <i class="fas fa-play-circle me-2"></i> הפעל תוכנה באתר (לבעלי רישיון)
+                </a>
+
+                {% if request.session.allow_download %}
+                    <div class="mt-2 p-3 border border-dashed border-success rounded text-center bg-dark">
+                        <p class="text-success fw-bold mb-2">🔓 גישת הורדה אושרה!</p>
+                        <a href="{{ software.download_url }}" class="btn btn-success w-100">
+                            <i class="fas fa-download me-2"></i> הורד גרסת Desktop למחשב
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="mt-2 p-2 border border-secondary rounded text-center opacity-75">
+                        <small class="text-white-50">
+                            <i class="fas fa-lock me-1"></i> אפשרות הורדה חסומה (זמין רק למחזיקי קוד VIP)
+                        </small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <hr class="border-orange my-5">
+
+    <div class="review-section mt-5 pb-5">
+        <h3 class="text-orange mb-4">דירוגים וביקורות</h3>
+        
+        {% if user.is_authenticated %}
+        <div class="card bg-dark border-secondary shadow">
+            <div class="card-body p-4">
+                <h5 class="text-white mb-3">שתף את החוויה שלך:</h5>
+                <form action="{% url 'add_review' software.id %}" method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label text-white-50">דירוג כוכבים:</label>
+                            <select name="rating" class="form-select bg-dark text-white border-orange">
+                                <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                                <option value="4">⭐⭐⭐⭐ (4)</option>
+                                <option value="3">⭐⭐⭐ (3)</option>
+                                <option value="2">⭐⭐ (2)</option>
+                                <option value="1">⭐ (1)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-9 mb-3">
+                            <label class="form-label text-white-50">הביקורת שלך:</label>
+                            <textarea name="comment" class="form-control bg-dark text-white border-secondary" rows="3" placeholder="כתוב כאן..."></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-orange px-4 fw-bold">פרסם ביקורת</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-secondary bg-dark border-secondary text-white-50">
+            <i class="fas fa-info-circle me-2"></i> כדי להוסיף ביקורת עליך <a href="{% url 'login' %}" class="text-orange">להתחבר למערכת</a>.
+        </div>
+        {% endif %}
+
+        <div class="mt-5">
+            <h4 class="text-white border-bottom border-secondary pb-2 mb-4">מה משתמשים אומרים:</h4>
+            {% for review in software.reviews.all %}
+            <div class="review-card mb-3 p-3 rounded bg-dark border-end border-orange border-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <strong class="text-orange fs-5">{{ review.user.username }}</strong>
+                    <div class="text-warning">
+                        {% for i in "12345" %}
+                            {% if i|add:0 <= review.rating %}
+                                <i class="fas fa-star"></i>
+                            {% else %}
+                                <i class="far fa-star text-secondary"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <p class="text-white mt-2 mb-1" style="color: #ffffff !important;">{{ review.comment }}</p>
+                <small class="text-muted">{{ review.created_at|date:"d/m/Y | H:i" }}</small>
+            </div>
+            {% empty %}
+            <div class="text-center py-4">
+                <p class="text-muted fs-5">אין עדיין ביקורות לתוכנה זו. תהיה הראשון לדרג!</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-tech { background: #ff5e00; color: white; border: none; transition: 0.3s; }
+    .btn-tech:hover { background: #e65500; transform: translateY(-2px); color: white; }
+    .shadow-orange { box-shadow: 0 4px 15px rgba(255, 94, 0, 0.4); }
+    .text-orange { color: #ff5e00 !important; }
+    .border-orange { border-color: #ff5e00 !important; }
+    .btn-outline-orange { border: 2px solid #ff5e00; color: #ff5e00; font-weight: bold; }
+    .btn-outline-orange:hover { background: #ff5e00; color: black; }
+    .review-card { background: rgba(255,255,255,0.02) !important; transition: 0.2s; }
+    .review-card:hover { background: rgba(255,255,255,0.05) !important; }
+</style>
+{% endblock %}

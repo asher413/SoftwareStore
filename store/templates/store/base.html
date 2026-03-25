@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TECHSTORE | Professional Systems</title>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --dark-bg: #050505;
+            --panel-bg: rgba(20, 20, 20, 0.85);
+            --neon-orange: #ff5e00;
+            --text-main: #ffffff;
+        }
+
+        body { 
+            background-color: var(--dark-bg); 
+            color: var(--text-main); 
+            font-family: 'Assistant', system-ui, sans-serif; /* שיניתי לאסיסטנט למראה מודרני בעברית */
+            margin: 0;
+        }
+
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1 !important; /* זה חייב להיות מינוס 1 */
+            opacity: 0.15;
+            pointer-events: none; /* מאפשר ללחוץ על כפתורים דרך המטריקס */
+        }
+
+        /* הוסף את זה כדי לוודא שהתוכן תמיד בולט */
+        .container, .navbar {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Navbar עוצמתי */
+        .navbar {
+            background: #000 !important;
+            border-bottom: 3px solid var(--neon-orange);
+            padding: 15px 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,1);
+        }
+        .navbar-brand { font-weight: 900; font-size: 1.8rem; color: #fff !important; }
+        .navbar-brand span { color: var(--neon-orange); }
+
+        .btn-tech {
+            background-color: var(--neon-orange) !important;
+            color: #000 !important;
+            font-weight: 800 !important;
+            border: none !important;
+            border-radius: 0;
+            padding: 12px 25px;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+        .btn-tech:hover {
+            background-color: #ffffff !important;
+            transform: translateY(-2px);
+        }
+        
+        /* כפתור כתום בסיסי לעגלה */
+        .btn-orange {
+            background-color: var(--neon-orange);
+            color: white;
+            border: none;
+        }
+        .btn-orange:hover {
+            background-color: #e05300;
+            color: white;
+        }
+
+        .software-card, .detail-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            border-top: 4px solid var(--neon-orange);
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            height: 100%;
+        }
+
+        /* מבטיח שהתוכן תמיד יהיה מעל אפקט המטריקס ולא ייבלע ברקע */
+        .container {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* תיקון לטקסטים בתוך כרטיסיות כדי שלא יהיו שקופים מדי */
+        .software-entry p, .software-entry h3 {
+            color: #ffffff !important;
+            text-shadow: 1px 1px 2px #000; /* מוסיף צל עדין לטקסט כדי שיבלוט */
+        }
+
+        /* תיקון לכותרות "אודות" ו"צור קשר" שנבלעות */
+        h1, h2, h3, .lead {
+            color: var(--neon-orange) !important;
+            font-weight: 800;
+        }
+
+        /* מניעת היעלמות טקסט בתוך ה-Input (שדות כתיבה) */
+        input, textarea {
+            color: white !important;
+            background-color: rgba(30, 30, 30, 0.9) !important;
+            border: 1px solid var(--neon-orange) !important;
+        }
+
+        /* מבטיח שהתוכן תמיד מעל הכל */
+        .container {
+            position: relative;
+            z-index: 5;
+        }
+
+        /* רקע כהה חצי שקוף לכרטיסיות כדי שהטקסט הלבן יבלוט */
+        .card, .software-entry {
+            background: rgba(20, 20, 20, 0.85) !important;
+            border: 1px solid #ff5e00 !important;
+            backdrop-filter: blur(5px); /* אפקט טשטוש יפה */
+        }
+
+        /* מניעת היעלמות טקסט בשדות כתיבה */
+        input, textarea, select {
+            color: white !important;
+            background: rgba(0, 0, 0, 0.7) !important;
+        }
+
+        body {
+            color: #ffffff; /* מוודא שכל טקסט ברירת המחדל הוא לבן */
+        }
+
+        /* מוודא שכל כותרת בתוך האתר תהיה קריאה */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--neon-orange, #ff5e00) !important;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        /* תיקון לנראות בתוך מודלים או טבלאות */
+        .table, .list-group-item {
+            color: white !important;
+            background-color: rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .text-orange { color: #ff5e00 !important; }
+        .border-orange { border: 1px solid #ff5e00 !important; }
+        .btn-orange { background-color: #ff5e00; color: white; border: none; }
+        .btn-orange:hover { background-color: #e65500; color: white; }
+
+        /* עיצוב הכוכבים */
+        .fa-star {
+            color: #ffc107; /* צהוב זהב */
+            margin-right: 2px;
+        }
+        .text-warning { color: #ffc107 !important; }
+
+        /* תיקון לטקסט שנבלע */
+        .modal-content-tech p, .container p {
+            color: #ffffff !important; /* לבן בוהק */
+            text-shadow: 1px 1px 2px rgba(0,0,0,1); /* צל שחור מסביב לאותיות */
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+
+        /* הבלטת הכותרות */
+        h1, h2, h3, .text-orange {
+            color: #ff5e00 !important;
+            font-weight: 800 !important;
+        }
+    </style>
+</head>
+<body>
+    {% if announcement and announcement.is_active %}
+    <div id="promoModal" class="modal-overlay">
+        <div class="modal-content-tech shadow-lg">
+            <span class="close-btn" onclick="document.getElementById('promoModal').style.display='none'">&times;</span>
+            <h2 class="text-orange" style="color: var(--neon-orange);">🔥 {{ announcement.title }} 🔥</h2>
+            <hr class="border-secondary">
+            <p class="text-white fs-5">{{ announcement.message }}</p>
+            
+            {% if announcement.coupon_to_show %}
+                <div class="coupon-box py-3 my-3 text-orange fw-bold" style="color: var(--neon-orange);">
+                    קוד קופון: <span id="couponCode">{{ announcement.coupon_to_show }}</span>
+                </div>
+                <small class="text-white-50 d-block mb-3">העתק את הקוד והשתמש בו בעגלה</small>
+            {% endif %}
+            
+            <button class="btn btn-orange w-100 fw-bold fs-5" onclick="document.getElementById('promoModal').style.display='none'">
+                קח אותי למבצע!
+            </button>
+        </div>
+    </div>
+    {% endif %}
+<canvas id="matrix-bg"></canvas>
+
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+    <div class="container">
+        
+        <a class="navbar-brand" href="{% url 'home' %}">TECH<span>STORE</span></a>
+        
+        <button class="navbar-toggler border-orange" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="fas fa-bars text-orange"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mx-auto">
+                <li class="nav-item"><a class="nav-link text-white px-3" href="{% url 'home' %}"><i class="fas fa-th-large text-orange"></i> קטלוג</a></li>
+                <li class="nav-item"><a class="nav-link text-white px-3" href="{% url 'blog' %}"><i class="fas fa-blog text-orange"></i> בלוג</a></li>
+                <li class="nav-item"><a class="nav-link text-white px-3" href="{% url 'about' %}"><i class="fas fa-info-circle text-orange"></i> אודות</a></li>
+                <li class="nav-item"><a class="nav-link text-white px-3" href="{% url 'contact' %}"><i class="fas fa-envelope text-orange"></i> צור קשר</a></li>
+            </ul>
+
+            <div class="d-flex align-items-center">
+                <a href="{% url 'view_cart' %}" class="btn btn-orange fw-bold px-4 position-relative ms-3">
+                    <i class="fas fa-shopping-cart me-2"></i> עגלה
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
+                        {{ request.session.cart|length|default:"0" }}
+                    </span>
+                </a>
+                
+                {% if user.is_authenticated %}
+                    <a href="{% url 'dashboard' %}" class="btn btn-outline-warning btn-sm me-2">הרכישות שלי</a>
+                    <form action="{% url 'logout' %}" method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link text-danger text-decoration-none small">יציאה</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-tech">כניסה</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+<div class="container mt-3">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} text-center" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="container mt-4">
+    {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Matrix effect script...
+    const canvas = document.getElementById('matrix-bg');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const drops = Array(Math.floor(canvas.width/14)).fill(1);
+    function draw() {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#ff4d00"; ctx.font = "14px monospace";
+        drops.forEach((y, i) => {
+            ctx.fillText(Math.floor(Math.random()*2), i*14, y*14);
+            if (y*14 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
+        });
+    }
+    setInterval(draw, 50);
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="container text-center mt-5">
+    <div class="software-card p-5 border-danger">
+        <h1 class="text-danger">המנוי פג תוקף 🛑</h1>
+        <p class="text-white mt-3">כדי להמשיך להשתמש ב-<strong>{{ software.title }}</strong> בתוך האתר, יש לחדש את המנוי החודשי.</p>
+        <a href="{% url 'software_detail' software.pk %}" class="btn btn-tech mt-3">לחידוש מנוי</a>
+    </div>
+</div>
+{% endblock %}

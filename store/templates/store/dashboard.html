@@ -1,0 +1,69 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 text-end" style="font-family: 'Assistant', sans-serif;">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="fw-bold text-white border-bottom border-orange pb-3">
+                <i class="fas fa-user-shield text-orange me-2"></i>
+                מסוף הרכישות של <span class="text-orange">{{ user.username }}</span>
+            </h2>
+        </div>
+    </div>
+
+    {% if request.session.allow_download %}
+        <div class="alert alert-success bg-dark border-success text-success text-center shadow-lg mb-5">
+            <i class="fas fa-star me-2"></i> <strong>מצב VIP פעיל!</strong> כל אפשרויות ההורדה פתוחות עבורך כעת.
+        </div>
+    {% endif %}
+
+    <div class="row">
+        {% for purchase in purchases %}
+        <div class="col-md-4 mb-4">
+            <div class="card bg-dark border-secondary h-100 shadow-sm" style="border-top: 4px solid #ff5e00 !important;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title text-white fw-bold">{{ purchase.software.title }}</h5>
+                        <span class="badge bg-orange">גרסה 2.4</span>
+                    </div>
+                    <p class="text-white-50 small">
+                        <i class="fas fa-calendar-alt me-1"></i> נרכש בתאריך: {{ purchase.purchase_date|date:"d/m/Y" }}
+                    </p>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{% url 'run_software' purchase.software.id %}" class="btn btn-outline-light btn-sm py-2">
+                            <i class="fas fa-play me-2"></i> הפעל תוכנה באתר
+                        </a>
+
+                        {% if request.session.allow_download %}
+                            <a href="{% url 'secure_download' purchase.software.id %}" class="btn btn-orange btn-sm py-2 fw-bold">
+                                <i class="fas fa-download me-2"></i> הורד תוכנה למחשב
+                            </a>
+                        {% else %}
+                            <div class="p-2 border border-secondary rounded text-center opacity-50 bg-black">
+                                <small class="text-white-50"><i class="fas fa-lock me-1"></i> הורדה חסומה (VIP)</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <h4 class="text-white-50">עדיין לא רכשת תוכנות במערכת.</h4>
+            <a href="{% url 'home' %}" class="btn btn-orange mt-3">לחנות התוכנות</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .bg-orange { background-color: #ff5e00 !important; color: white; }
+    .border-orange { border-color: #ff5e00 !important; }
+    .btn-orange { background-color: #ff5e00 !important; color: white !important; border: none; }
+    .btn-orange:hover { background-color: #e65500 !important; transform: translateY(-2px); }
+    .card { transition: transform 0.3s; }
+    .card:hover { transform: translateY(-5px); }
+</style>
+{% endblock %}

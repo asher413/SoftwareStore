@@ -1,0 +1,28 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="container text-center py-5">
+    <div class="success-card p-5 border-orange bg-dark shadow-lg rounded">
+        <div class="license-animation mb-4">
+            <i class="fas fa-file-signature fa-5x text-orange pulse"></i>
+            <div class="check-mark"><i class="fas fa-check-circle text-success"></i></div>
+        </div>
+        <h1 class="text-white mb-3">התשלום עבר בהצלחה!</h1>
+        <h3 class="text-orange mb-4">הרישיון המקצועי שלך הונפק ל-30 יום</h3>
+        <p class="text-white-50">כעת תוכל להריץ את כל התוכנות שרכשת ישירות מלוח הבקרה.</p>
+        
+        <div class="mt-5">
+            <a href="{% url 'dashboard' %}" class="btn btn-orange btn-lg px-5 fw-bold">עבור ללוח הבקרה שלי</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pulse { animation: pulse-animation 2s infinite; }
+    @keyframes pulse-animation {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .success-card { border: 2px solid #ff5e00; position: relative; overflow: hidden; }
+</style>
+{% endblock %}

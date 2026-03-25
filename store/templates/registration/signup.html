@@ -1,0 +1,35 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-md-5">
+        <div class="software-card p-5 shadow-lg" style="border-top: 4px solid var(--neon-orange) !important;">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold text-white">CREATE_ACCOUNT</h2>
+                <p class="code-line">// הצטרף לקהילת המפתחים והמשתמשים שלנו</p>
+            </div>
+            
+            <form method="POST" class="mt-4">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">{{ field.label }}</label>
+                        <input type="{{ field.field.widget.input_type }}" 
+                               name="{{ field.html_name }}" 
+                               class="form-control search-input p-3" 
+                               placeholder="הזן {{ field.label }}...">
+                        {% if field.errors %}
+                            <div class="text-danger small mt-1">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-tech w-100 py-3 mt-4">אישור ורישום למערכת</button>
+            </form>
+            
+            <div class="text-center mt-4">
+                <small class="text-muted text-uppercase">כבר רשום? <a href="#" onclick="openAuth()" class="text-white text-decoration-none">התחבר כאן</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

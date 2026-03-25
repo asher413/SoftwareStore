@@ -1,0 +1,73 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="list-group shadow-sm mb-4">
+                <div class="list-group-item bg-orange text-white fw-bold text-center border-0" style="background-color: #ff5e00 !important;">קטגוריות</div>
+                <a href="{% url 'home' %}" class="list-group-item list-group-item-action bg-dark text-white border-secondary text-end">כל התוכנות</a>
+                
+                {% for cat in categories %}
+                <a href="?category={{ cat.id }}" class="list-group-item list-group-item-action bg-dark text-white border-secondary text-end">
+                    {{ cat.name }}
+                </a>
+                {% empty %}
+                <small class="text-muted p-2 d-block text-center">אין קטגוריות (הוסף ב-Admin)</small>
+                {% endfor %}
+            </div>
+
+            <div class="software-card p-3 text-center" style="border-top: 3px solid #25d366;">
+                <p class="small text-white-50">זקוק לעזרה בבחירה?</p>
+                <a href="https://wa.me/972500000000" class="btn btn-success btn-sm w-100">
+                    <i class="fab fa-whatsapp"></i> צ'אט עם A.B תכנות
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-9 text-end">
+            <h2 class="text-white border-bottom border-orange pb-2 mb-4">
+                קטלוג תוכנה <span style="color: #ff5e00;">A.B Professional</span>
+            </h2>
+            
+            {% for sw in softwares %}
+            <div class="software-entry mb-4 p-0 shadow-lg d-flex flex-row-reverse" style="background: #111; border-radius: 8px; overflow: hidden; border: 1px solid #333;">
+                <div style="width: 300px; min-width: 300px;">
+                    <img src="{% if sw.image_url %}{{ sw.image_url }}{% else %}https://via.placeholder.com/300x200?text=No+Image{% endif %}" 
+                        alt="{{ sw.title }}" 
+                        style="max-width: 100%; height: auto;">
+                    </div>
+                
+                <div class="p-4 w-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <h3 style="color: #ff5e00;" class="fw-bold">{{ sw.title }}</h3>
+                        <p class="text-white-50" style="font-size: 0.9rem;">{{ sw.description|truncatewords:20 }}</p>
+                        <div class="mt-2">
+                            <span class="badge bg-secondary">Category: {{ sw.category.name|default:"כללי" }}</span>
+                            <span class="badge bg-dark border border-orange" style="color: #ff5e00;">₪{{ sw.price }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 d-flex gap-2 justify-content-start">
+                        <a href="{% url 'add_to_cart' sw.pk %}" class="btn btn-orange px-4 py-2 fw-bold" style="background-color: #ff5e00; color: white;">
+                            <i class="fas fa-cart-plus me-2"></i> הוסף לעגלה
+                        </a>
+                        <a href="{% url 'software_detail' sw.pk %}" class="btn btn-outline-light px-4">פרטים נוספים</a>
+                    </div>
+
+                    <div class="rating mb-2">
+                        {% for i in "12345" %}
+                            <i class="fa{% if forloop.counter <= sw.average_rating %}s{% else %}r{% endif %} fa-star text-warning"></i>
+                        {% endfor %}
+                        <span class="text-muted small">({{ sw.reviews.count }})</span>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5">
+                <h4 class="text-white-50">לא נמצאו תוכנות בקטגוריה זו.</h4>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="row">
+    <div class="col-12 text-center mb-5">
+        <h1 class="display-4 fw-bold">TECH<span class="text-orange">BLOG</span></h1>
+        <p class="text-muted small">// עדכוני תוכנה, מדריכים וחדשות טכנולוגיה</p>
+    </div>
+
+    <div class="sidebar">
+        <h3>ארכיון</h3>
+        <p>רוצה לקרוא עוד?</p>
+        <a href="{% url 'blog_archive' %}" class="btn btn-secondary">מאמרים קודמים</a>
+    </div>
+
+    {% for post in posts %}
+    <div class="col-md-8 mx-auto mb-4">
+        <div class="software-card p-4">
+            <small class="text-orange">{{ post.created_at|date:"d M, Y" }}</small>
+            <h2 class="h3 text-white mt-2">{{ post.title }}</h2>
+            <hr class="border-secondary">
+            <p class="text-muted">{{ post.content|truncatewords:50 }}</p>
+            <a href="{% url 'blog_detail' post.pk %}" class="btn btn-outline-warning btn-sm">קרא עוד...</a>
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-center text-muted">עדיין אין פוסטים בבלוג. כנס ל-Admin כדי להוסיף!</p>
+    {% endfor %}
+</div>
+{% endblock %}

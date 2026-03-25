@@ -1,0 +1,90 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="container mt-5 text-end" dir="rtl">
+    <h1 class="text-orange mb-4 border-bottom border-orange pb-2">מערכת בקרה - A.B Professional</h1>
+    
+    <div class="row mb-5">
+        <div class="col-md-3">
+            <div class="card bg-dark border-orange text-center p-3 shadow">
+                <h6 class="text-white-50">סה"כ משתמשים</h6>
+                <h2 class="text-orange">{{ users_count }}</h2>
+                <i class="fas fa-users text-white-50"></i>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-success text-center p-3 shadow">
+                <h6 class="text-white-50">הכנסות החודש</h6>
+                <h2 class="text-success">₪{{ revenue }}</h2>
+                <i class="fas fa-cash-register text-white-50"></i>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-info text-center p-3 shadow">
+                <h6 class="text-white-50">רישיונות פעילים</h6>
+                <h2 class="text-info">{{ active_licenses_count }}</h2>
+                <i class="fas fa-key text-white-50"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card bg-dark border-secondary p-4 shadow">
+                <h4 class="text-orange mb-4">היסטוריית תשלומים ורכישות</h4>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>משתמש</th>
+                                <th>תוכנה</th>
+                                <th>תאריך קנייה</th>
+                                <th>תוקף</th>
+                                <th>סטטוס</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in recent_purchases %}
+                            <tr>
+                                <td>{{ p.user.username }}</td>
+                                <td>{{ p.software.title }}</td>
+                                <td>{{ p.purchase_date|date:"d/m/Y" }}</td>
+                                <td>{{ p.expiry_date|date:"d/m/Y" }}</td>
+                                <td>
+                                    {% if p.is_active %}
+                                        <span class="badge bg-success text-dark">פעיל</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">פג תוקף</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-dark border-orange p-4 shadow">
+                <h4 class="text-orange mb-3">ניהול קופונים</h4>
+                <ul class="list-group list-group-flush">
+                    {% for c in coupons %}
+                    <li class="list-group-item bg-transparent text-white d-flex justify-content-between">
+                        <span>{{ c.code }} ({{ c.discount_percent }}%)</span>
+                        <a href="/admin/store/coupon/{{ c.id }}/change/" class="text-orange"><i class="fas fa-edit"></i></a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <a href="/admin/store/coupon/add/" class="btn btn-outline-orange mt-3 w-100">צור קופון חדש</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-outline-orange { border: 1px solid #ff5e00; color: #ff5e00; }
+    .btn-outline-orange:hover { background: #ff5e00; color: black; }
+    .table-dark { --bs-table-bg: transparent; }
+    .border-orange { border: 1px solid #ff5e00 !important; }
+</style>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="container mt-5 text-end">
+    <div class="software-card p-5 shadow-orange">
+        <h2 class="text-orange fw-bold mb-4">צרו קשר עם A.B תכנות</h2>
+        <p class="text-white-50">זקוקים לתוכנה בהתאמה אישית? מלאו את הפרטים ונחזור אליכם.</p>
+        
+        <form method="POST" class="mt-4">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="text-white">שם מלא:</label>
+                <input type="text" name="name" class="form-control bg-dark text-white border-secondary" required>
+            </div>
+            <div class="mb-3">
+                <label class="text-white">אימייל לחזרה:</label>
+                <input type="email" name="email" class="form-control bg-dark text-white border-secondary" required>
+            </div>
+            <div class="mb-3">
+                <label class="text-white">הודעה / פירוט הפרויקט:</label>
+                <textarea name="message" rows="5" class="form-control bg-dark text-white border-secondary" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-tech w-100">שלח הודעה לצוות הפיתוח</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="container mt-5 mb-5" dir="rtl">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 shadow-lg p-5 bg-dark text-white rounded-4 border border-secondary">
+            <!-- כותרת המאמר -->
+            <h1 class="display-4 fw-bold text-orange mb-3">{{ post.title }}</h1>
+            
+            <div class="d-flex justify-content-between align-items-center text-muted mb-4">
+                <span><i class="fas fa-calendar-alt"></i> פורסם ב: {{ post.created_at|date:"d/m/Y" }}</span>
+                <span class="badge bg-orange text-dark">טכנולוגיה</span>
+            </div>
+            
+            <hr class="border-secondary opacity-50 mb-5">
+            
+            <!-- תוכן המאמר עם ריווח שורות משופר -->
+            <div class="blog-content lh-lg" style="font-size: 1.2rem; text-align: justify;">
+                {{ post.content|linebreaks }}
+            </div>
+
+            <div class="mt-5 pt-4 border-top border-secondary">
+                <a href="{% url 'blog' %}" class="btn btn-outline-warning">
+                    <i class="fas fa-arrow-right"></i> חזרה לבלוג
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-orange { color: #ff8c00; }
+    .bg-orange { background-color: #ff8c00; }
+    .blog-content p { margin-bottom: 1.5rem; }
+</style>
+{% endblock %}

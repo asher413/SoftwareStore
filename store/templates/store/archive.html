@@ -1,0 +1,19 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="container mt-5" dir="rtl">
+    <h2 class="text-white mb-4">ארכיון מאמרים</h2>
+    <div class="list-group">
+        {% for post in archive_posts %}
+        <a href="{% url 'blog_detail' post.pk %}" class="list-group-item list-group-item-action bg-dark text-white border-secondary mb-2 rounded">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1 text-orange">{{ post.title }}</h5>
+                <small>{{ post.created_at|date:"d/m/Y" }}</small>
+            </div>
+            <p class="mb-1 text-muted small">{{ post.content|truncatewords:20 }}</p>
+        </a>
+        {% empty %}
+        <p class="text-muted">אין עדיין מאמרים נוספים בארכיון.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
