@@ -17,7 +17,6 @@ import os
 
 env = environ.Env()
 # קורא את קובץ ה-.env
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 STRIPE_PUBLISHABLE_KEY = env('STRIPE_PUBLISHABLE_KEY')
 STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY')
@@ -25,6 +24,7 @@ STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
