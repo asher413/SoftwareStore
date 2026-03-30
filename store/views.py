@@ -17,6 +17,11 @@ from .models import BlogPost, SiteAnnouncement  # הוסף כאן את SiteAnnou
 import stripe
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser('admin', 'admin@example.com', '123456')
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
