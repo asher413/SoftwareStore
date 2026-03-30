@@ -147,4 +147,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 LOGIN_URL = 'login'
 
-DATABASES = 'postgresql://asher_m7n1_user:M01EHV4XoVo17WBMdkT5ScVUkExqiUZg@dpg-d75cjip5pdvs73b95vug-a/asher_m7n1'
+import dj_database_url
+import os
+
+DATABASES = {
+    'default': dj_database_url.config(
+        default='postgresql://asher_m7n1_user:M01EHV4XoVo17WBMdkT5ScVUkExqiUZg@dpg-d75cjip5pdvs73b95vug-a/asher_m7n1', # שים כאן את הכתובת שהעתקת מ-Render
+        conn_max_age=600
+    )
+}
