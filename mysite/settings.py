@@ -144,3 +144,5 @@ STRIPE_SECRET_KEY = 'sk_test_... (המפתח הסודי)'
 # הגדרת התיקייה שבה יישמרו הקבצים שהעלית (כמו ה-Software File)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+LOGIN_URL = 'login'
