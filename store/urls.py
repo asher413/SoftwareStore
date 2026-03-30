@@ -40,5 +40,5 @@ urlpatterns = [
     path('create-checkout-session/<int:product_id>/', views.create_checkout_session, name='create_checkout_session'),
     path('success/', views.payment_success, name='payment_success'), # צור פונקציה פשוטה לזה ב-views
     path('cancel/', views.payment_cancel, name='payment_cancel'),    # כנ"ל לביטול
-    path('google12345.html', lambda r: HttpResponse("google-site-verification: google12345.html", content_type="text/html")),
+    path('google5790f6262ad0b876.html', lambda r: HttpResponse("google-site-verification: google5790f6262ad0b876.html")),
 ]
