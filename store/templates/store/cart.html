@@ -34,9 +34,11 @@
                     </div>
                 </form>
     
-            <a href="{% url 'create_checkout_session' product.id %}" class="your-button-class">
-                המשך לתשלום בטוח
-            </a>
+            {% if softwares %}
+                <a href="{% url 'create_checkout_session' softwares.0.id %}" class="btn btn-orange">
+                    המשך לתשלום בטוח
+                </a>
+           {% endif %}
           </div>
         </div>
     </div>
