@@ -146,3 +146,5 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 LOGIN_URL = 'login'
+
+DATABASES = 'postgresql://asher_m7n1_user:M01EHV4XoVo17WBMdkT5ScVUkExqiUZg@dpg-d75cjip5pdvs73b95vug-a/asher_m7n1'
