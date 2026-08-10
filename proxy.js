@@ -253,7 +253,7 @@ const SKIP_REQ = new Set([
 const SKIP_RES = new Set([
   "set-cookie", "server", "report-to", "nel",
   "cf-ray", "cf-cache-status", "x-render-origin",
-  "content-encoding", "transfer-encoding",
+  "transfer-encoding",
 ]);
 
 const NULL_BODY = new Set([204, 205, 304]);
