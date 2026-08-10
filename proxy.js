@@ -314,6 +314,7 @@ function proxyRequest(targetUrl, method, reqHeaders, bodyBuffer, attempt, callba
   const hostname = parsed.hostname;
   const port = parsed.port || (parsed.protocol === "https:" ? 443 : 80);
   const isHttps = parsed.protocol === "https:";
+  const reqPath = parsed.pathname + parsed.search;
 
   // Circuit breaker
   if (circuitBreaker.isOpen(hostname)) {
@@ -323,7 +324,7 @@ function proxyRequest(targetUrl, method, reqHeaders, bodyBuffer, attempt, callba
   // Resolve DNS (cached)
   const cachedIP = dnsCache.get(hostname);
   if (cachedIP) {
-    return doConnect(cachedIP, port, isHttps, hostname, parsed.path, method, reqHeaders, bodyBuffer, attempt, callback);
+    return doConnect(cachedIP, port, isHttps, hostname, reqPath, method, reqHeaders, bodyBuffer, attempt, callback);
   }
 
   dns.lookup(hostname, { family: 4, timeout: 4000 }, (err, address) => {
@@ -332,7 +333,7 @@ function proxyRequest(targetUrl, method, reqHeaders, bodyBuffer, attempt, callba
       return retryOrFail(err, targetUrl, method, reqHeaders, bodyBuffer, attempt, callback);
     }
     dnsCache.set(hostname, [address]);
-    doConnect(address, port, isHttps, hostname, parsed.path, method, reqHeaders, bodyBuffer, attempt, callback);
+    doConnect(address, port, isHttps, hostname, reqPath, method, reqHeaders, bodyBuffer, attempt, callback);
   });
 }
 
@@ -357,7 +358,7 @@ function doConnect(ip, port, isHttps, hostname, path, method, reqHeaders, bodyBu
   const reqOpts = {
     hostname: ip,
     port,
-    path: path + (new URL(`http://x${path}`)).search, // preserve query
+    path: path,
     method,
     headers: fwdHdrs,
     agent: isHttps ? httpsAgent : httpAgent,
