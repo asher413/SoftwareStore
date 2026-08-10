@@ -1,0 +1,7 @@
+{
+  "name": "hordproxy-render",
+  "version": "3.0.0",
+  "private": true,
+  "scripts": { "start": "node proxy.js" },
+  "engines": { "node": ">=18" }
+}
