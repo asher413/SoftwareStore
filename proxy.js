@@ -400,6 +400,66 @@ function retryOrFail(err, targetUrl, method, reqHeaders, bodyBuffer, attempt, ca
 }
 
 // ═══════════════════════════════════════════
+// HTTP CONNECT tunnel handler
+// ═══════════════════════════════════════════
+
+function handleConnect(req, res, host, port) {
+  const transport = port === 443 ? https : http;
+
+  // DNS lookup
+  dns.lookup(host, { family: 4, timeout: 4000 }, (err, address) => {
+    if (err) {
+      res.writeHead(502);
+      return res.end();
+    }
+    dnsCache.set(host, [address]);
+
+    // Connect to target
+    const upstream = transport.request({
+      hostname: address,
+      port,
+      method: "CONNECT",
+      path: req.url || `${host}:${port}`,
+      servername: host,
+      timeout: CFG.connectTimeout,
+      agent: false,
+    });
+
+    upstream.on("connect", (upstreamRes, upstreamSocket) => {
+      // Tell client we're connected
+      res.writeHead(200, "Connection Established");
+      res.write("");
+
+      // Bidirectional pipe
+      const clientSocket = req.socket;
+      upstreamSocket.pipe(clientSocket);
+      clientSocket.pipe(upstreamSocket);
+
+      upstreamSocket.on("error", () => {
+        clientSocket.destroy();
+      });
+      clientSocket.on("error", () => {
+        upstreamSocket.destroy();
+      });
+      clientSocket.on("close", () => {
+        upstreamSocket.destroy();
+        releaseConcurrency();
+      });
+    });
+
+    upstream.on("error", () => {
+      if (!res.headersSent) {
+        res.writeHead(502);
+        res.end();
+      }
+      releaseConcurrency();
+    });
+
+    upstream.end();
+  });
+}
+
+// ═══════════════════════════════════════════
 // Request handler
 // ═══════════════════════════════════════════
 
@@ -407,6 +467,18 @@ function handleRequest(req, res) {
   const clientIP =
     (req.headers["x-forwarded-for"] || "").split(",")[0].trim() ||
     req.socket.remoteAddress || "?";
+
+  // ── HTTP CONNECT tunneling (for HTTPS proxying — yt-dlp, browsers) ──
+  if (req.method === "CONNECT") {
+    const [targetHost, targetPort] = (req.url || "").split(":");
+    const port = parseInt(targetPort) || 443;
+    if (!targetHost) {
+      res.writeHead(400);
+      return res.end();
+    }
+    handleConnect(req, res, targetHost, port);
+    return;
+  }
 
   // ── CORS ──
   if (req.method === "OPTIONS") {
