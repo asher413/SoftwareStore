@@ -685,20 +685,23 @@ function sha256buf(...parts) {
   return h.digest();
 }
 
-function keystream(key, direction, seq, need) {
+function keystream(key, direction, offset, need) {
+  // keystream רציף לפי מיקום מוחלט: הבייט במיקום P בזרם הוא
+  // SHA256(key || d || block_index_be8) בתוך הבלוק index = P//32.
+  // כל בייט מפוענח לפי מיקומו המוחלט — גם אם רשת (נטפרי ב-MITM)
+  // מפצלת/ממזגת מסגרות, הפיענוח נשאר נכון. זהה ביט-לביט ללקוח.
   const out = Buffer.alloc(need);
-  const seqBuf = Buffer.alloc(4);
-  seqBuf.writeUInt32BE(seq >>> 0);
-  let off = 0;
-  let c = 0;
-  while (off < need) {
-    const cBuf = Buffer.alloc(4);
-    cBuf.writeUInt32BE(c >>> 0);
-    const block = sha256buf(key, Buffer.from([direction]), seqBuf, cBuf);
-    const take = Math.min(block.length, need - off);
-    block.copy(out, off, 0, take);
-    off += take;
-    c++;
+  let pos = offset;
+  let done = 0;
+  while (done < need) {
+    const idxBuf = Buffer.alloc(8);
+    idxBuf.writeBigUInt64BE(BigInt(Math.floor(pos / 32)));
+    const block = sha256buf(key, Buffer.from([direction]), idxBuf);
+    const startIn = pos % 32;
+    const take = Math.min(32 - startIn, need - done);
+    block.copy(out, done, startIn, startIn + take);
+    done += take;
+    pos += take;
   }
   return out;
 }
@@ -727,17 +730,19 @@ function makeStealthCipher(clientNonceHex, serverNonceHex) {
     Buffer.from(clientNonceHex, "hex"),
     Buffer.from(serverNonceHex, "hex"),
   );
-  let sendSeq = 0;  // מסגרות שיוצאות ללקוח (d=1)
-  let recvSeq = 0;  // מסגרות שנכנסות מהלקוח (d=0)
+  let sendOff = 0;  // בייטים שיצאו ללקוח (d=1)
+  let recvOff = 0;  // בייטים שנכנסו מהלקוח (d=0)
   return {
     enc(payload) {
       if (!payload || payload.length === 0) return payload;
-      const ks = keystream(key, 1, sendSeq++, payload.length);
+      const ks = keystream(key, 1, sendOff, payload.length);
+      sendOff += payload.length;
       return xorBuf(payload, ks);
     },
     dec(payload) {
       if (!payload || payload.length === 0) return payload;
-      const ks = keystream(key, 0, recvSeq++, payload.length);
+      const ks = keystream(key, 0, recvOff, payload.length);
+      recvOff += payload.length;
       return xorBuf(payload, ks);
     },
   };
@@ -860,12 +865,13 @@ function handleWsTunnel(req, socket, head) {
   function upPush(d) {
     upBuf.push(d);
     upBufLen += d.length;
-    // מסגרת גדולה מספיק — שולחים מיד
-    if (upBufLen >= 32768) {
+    // מסגרות קטנות (≤2KB) — רשתות עם MITM (נטפרי) משחיתות מסגרות
+    // WebSocket גדולות (~4KB+). הפיענוח מבוסס-מיקום לא תלוי בגבולות
+    // המסגרת, אז קטן ובטוח.
+    if (upBufLen >= 2048) {
       upFlush();
     } else if (upFlushTimer === null) {
-      // אחרת אוספים ~10ms ומשחררים — זה מאחד עשרות חלקים קטנים למסגרת אחת
-      upFlushTimer = setTimeout(upFlush, 10);
+      upFlushTimer = setTimeout(upFlush, 2);
     }
   }
 
