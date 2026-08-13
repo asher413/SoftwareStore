@@ -756,6 +756,32 @@ function handleWsTunnel(req, socket, head) {
 
   let upstream = null;
   let targetSent = false;
+  // צבירת נתונים מהיעד למסגרות גדולות — מסגרות קטנות רבות
+  // עוברות לאט דרך פרוקסי ה-WebSocket של Cloudflare.
+  let upBuf = [];
+  let upBufLen = 0;
+  let upFlushTimer = null;
+
+  function upFlush() {
+    upFlushTimer = null;
+    if (upBufLen === 0 || socket.destroyed) return;
+    const chunk = Buffer.concat(upBuf, upBufLen);
+    upBuf = [];
+    upBufLen = 0;
+    try { socket.write(wsFrame(0x2, chunk)); } catch { /* ignore */ }
+  }
+
+  function upPush(d) {
+    upBuf.push(d);
+    upBufLen += d.length;
+    // מסגרת גדולה מספיק — שולחים מיד
+    if (upBufLen >= 32768) {
+      upFlush();
+    } else if (upFlushTimer === null) {
+      // אחרת אוספים ~10ms ומשחררים — זה מאחד עשרות חלקים קטנים למסגרת אחת
+      upFlushTimer = setTimeout(upFlush, 10);
+    }
+  }
 
   const parser = new WsFrameParser((opcode, payload) => {
     if (opcode === 0x8) { // close
@@ -789,9 +815,7 @@ function handleWsTunnel(req, socket, head) {
           } catch { up.destroy(); }
         });
         up.on("data", (d) => {
-          if (!socket.destroyed) {
-            try { socket.write(wsFrame(0x2, d)); } catch { /* ignore */ }
-          }
+          if (!socket.destroyed) upPush(d);
         });
         up.on("error", () => socket.destroy());
         up.on("close", () => socket.destroy());
@@ -806,8 +830,14 @@ function handleWsTunnel(req, socket, head) {
 
   if (head && head.length) parser.push(head);
   socket.on("data", (d) => parser.push(d));
-  socket.on("close", () => { if (upstream) upstream.destroy(); });
-  socket.on("error", () => { if (upstream) upstream.destroy(); });
+  socket.on("close", () => {
+    if (upFlushTimer) { clearTimeout(upFlushTimer); upFlushTimer = null; }
+    if (upstream) upstream.destroy();
+  });
+  socket.on("error", () => {
+    if (upFlushTimer) { clearTimeout(upFlushTimer); upFlushTimer = null; }
+    if (upstream) upstream.destroy();
+  });
 }
 
 // ═══════════════════════════════════════════
