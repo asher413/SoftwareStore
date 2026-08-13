@@ -883,12 +883,18 @@ function handleWsTunnel(req, socket, head) {
       }
       const up = net.connect({ host: address, port: t.port });
       upstream = up;
-      up.on("connect", () => sendControl({ ok: true }));
-      up.on("data", (d) => {
-        if (!socket.destroyed) upPush(d);
-      });
-      up.on("error", () => socket.destroy());
-      up.on("close", () => socket.destroy());
+      up.on("connect", () => sendControl({ ok: true }));        up.on("data", (d) => {
+          if (!socket.destroyed) upPush(d);
+        });
+        up.on("error", () => socket.destroy());
+        up.on("close", () => {
+          // שולחים קודם את הנתונים המאוגדים (מחכים ל-timer של 10ms),
+          // ורק אז סוגרים — אחרת התשובה האחרונה הולכת לאיבוד
+          // כשהשרת סוגר את החיבור מיד (Connection: close).
+          if (upFlushTimer) { clearTimeout(upFlushTimer); upFlushTimer = null; }
+          upFlush();
+          socket.end();  // סגירה חטובה — הנתונים האחרונים מגיעים ללקוח
+        });
     });
   }
 
