@@ -662,6 +662,87 @@ function wsAccept(key) {
   return crypto.createHash("sha1").update(key + WS_GUID).digest("base64");
 }
 
+// ═══════════════════════════════════════════
+// Stealth — הסוואה + הצפנה של מנהרת ה-WebSocket
+// ═══════════════════════════════════════════
+// כדי שגם רשת שמבצעת MITM על ה-TLS (נטפרי עם ה-CA שלה) לא תראה את
+// היעדים או את התוכן, כל תעבורת המנהרה מוצפנת מקצה לקצה עם מפתח
+// משותף (XOR + SHA-256 counter mode), וכל חיבור משתמש בנתיב אקראי
+// אחר — אין שום דפוס קבוע לחסום או לזהות.
+// הפרוטוקול חייב להיות זהה ביט-לביט ללקוח (app/tunnel.py).
+
+const STEALTH_SECRET = "HordStealthTunnel2026-SecretA1";
+
+// נתיבים "תמימים" שמתקבלים כמנהרה — הלקוח בוחר אחד באקראי לכל חיבור.
+const TUNNEL_PATHS = new Set([
+  "/ws", "/socket.io/", "/graphql", "/api/v1/stream", "/api/v1/sync",
+  "/api/v1/events", "/api/v2/data", "/live", "/realtime", "/api/updates",
+]);
+
+function sha256buf(...parts) {
+  const h = crypto.createHash("sha256");
+  for (const p of parts) h.update(p);
+  return h.digest();
+}
+
+function keystream(key, direction, seq, need) {
+  const out = Buffer.alloc(need);
+  const seqBuf = Buffer.alloc(4);
+  seqBuf.writeUInt32BE(seq >>> 0);
+  let off = 0;
+  let c = 0;
+  while (off < need) {
+    const cBuf = Buffer.alloc(4);
+    cBuf.writeUInt32BE(c >>> 0);
+    const block = sha256buf(key, Buffer.from([direction]), seqBuf, cBuf);
+    const take = Math.min(block.length, need - off);
+    block.copy(out, off, 0, take);
+    off += take;
+    c++;
+  }
+  return out;
+}
+
+function xorBuf(a, b) {
+  const out = Buffer.alloc(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = a[i] ^ b[i];
+  return out;
+}
+
+const HELLO_KEY = sha256buf(
+  Buffer.from("hord:tunnel:hello:v1:" + STEALTH_SECRET));
+
+// hello שהלקוח שולח (d=0) — השרת מפענח עם d=0
+function stealthHelloDecrypt(payload) {
+  return xorBuf(payload, keystream(HELLO_KEY, 0, 0, payload.length));
+}
+// hello שהשרת שולח חזרה (d=1) — הלקוח מפענח עם d=1
+function stealthHelloEncrypt(payload) {
+  return xorBuf(payload, keystream(HELLO_KEY, 1, 0, payload.length));
+}
+
+function makeStealthCipher(clientNonceHex, serverNonceHex) {
+  const key = sha256buf(
+    Buffer.from("hord:tunnel:sess:v1:" + STEALTH_SECRET),
+    Buffer.from(clientNonceHex, "hex"),
+    Buffer.from(serverNonceHex, "hex"),
+  );
+  let sendSeq = 0;  // מסגרות שיוצאות ללקוח (d=1)
+  let recvSeq = 0;  // מסגרות שנכנסות מהלקוח (d=0)
+  return {
+    enc(payload) {
+      if (!payload || payload.length === 0) return payload;
+      const ks = keystream(key, 1, sendSeq++, payload.length);
+      return xorBuf(payload, ks);
+    },
+    dec(payload) {
+      if (!payload || payload.length === 0) return payload;
+      const ks = keystream(key, 0, recvSeq++, payload.length);
+      return xorBuf(payload, ks);
+    },
+  };
+}
+
 // מסגרת WebSocket משרת ללקוח (ללא mask, לפי RFC 6455)
 function wsFrame(opcode, payload) {
   const len = payload.length;
@@ -737,7 +818,8 @@ class WsFrameParser {
 
 function handleWsTunnel(req, socket, head) {
   const url = new URL(req.url, "http://x");
-  if (url.pathname !== "/tunnel") {
+  // נתיב אקראי "תמים" (ולא רק /tunnel) + תאימות לאחור עם /tunnel
+  if (url.pathname !== "/tunnel" && !TUNNEL_PATHS.has(url.pathname)) {
     socket.destroy();
     return;
   }
@@ -754,8 +836,10 @@ function handleWsTunnel(req, socket, head) {
     `Sec-WebSocket-Accept: ${wsAccept(key)}\r\n\r\n`
   );
 
-  let upstream = null;
+  let cipher = null;      // הצפנת מושב (אחרי hello v2)
+  let helloDone = false;  // ה-hello הוחלף (v2) או מסגרת היעד התקבלה (v1)
   let targetSent = false;
+  let upstream = null;
   // צבירת נתונים מהיעד למסגרות גדולות — מסגרות קטנות רבות
   // עוברות לאט דרך פרוקסי ה-WebSocket של Cloudflare.
   let upBuf = [];
@@ -768,7 +852,9 @@ function handleWsTunnel(req, socket, head) {
     const chunk = Buffer.concat(upBuf, upBufLen);
     upBuf = [];
     upBufLen = 0;
-    try { socket.write(wsFrame(0x2, chunk)); } catch { /* ignore */ }
+    try {
+      socket.write(wsFrame(0x2, cipher ? cipher.enc(chunk) : chunk));
+    } catch { /* ignore */ }
   }
 
   function upPush(d) {
@@ -783,6 +869,29 @@ function handleWsTunnel(req, socket, head) {
     }
   }
 
+  function sendControl(obj) {
+    const b = Buffer.from(JSON.stringify(obj));
+    try { socket.write(wsFrame(0x2, cipher ? cipher.enc(b) : b)); } catch { /* ignore */ }
+  }
+
+  function connectTarget(t) {
+    dns.lookup(t.host, { family: 4, timeout: 4000 }, (err, address) => {
+      if (err) {
+        sendControl({ error: "dns" });
+        socket.destroy();
+        return;
+      }
+      const up = net.connect({ host: address, port: t.port });
+      upstream = up;
+      up.on("connect", () => sendControl({ ok: true }));
+      up.on("data", (d) => {
+        if (!socket.destroyed) upPush(d);
+      });
+      up.on("error", () => socket.destroy());
+      up.on("close", () => socket.destroy());
+    });
+  }
+
   const parser = new WsFrameParser((opcode, payload) => {
     if (opcode === 0x8) { // close
       socket.destroy();
@@ -794,37 +903,52 @@ function handleWsTunnel(req, socket, head) {
     }
     if (opcode === 0xA) return; // pong
 
+    let data = payload;
+    if (cipher) {
+      try { data = cipher.dec(payload); } catch { socket.destroy(); return; }
+    }
+
+    if (!helloDone) {
+      // ניסיון v2 (hello מוצפן); אם נכשל — v1 (יעד בטקסט רגיל)
+      let hello = null;
+      try {
+        hello = JSON.parse(stealthHelloDecrypt(data).toString("utf-8"));
+      } catch { /* לא v2 */ }
+      if (hello && hello.v === 2 && hello.n) {
+        helloDone = true;
+        const sn = crypto.randomBytes(16);
+        cipher = makeStealthCipher(hello.n, sn.toString("hex"));
+        // תשובת ה-hello מוצפנת עם מפתח ה-hello (d=1) — כמו בלקוח
+        try {
+          socket.write(wsFrame(0x2, stealthHelloEncrypt(
+            Buffer.from(JSON.stringify({ ok: true, n: sn.toString("hex") })))));
+        } catch { /* ignore */ }
+        return;
+      }
+      helloDone = true;
+      let t;
+      try {
+        t = JSON.parse(data.toString("utf-8"));
+      } catch { socket.destroy(); return; }
+      if (!t || !t.host || !t.port) { socket.destroy(); return; }
+      targetSent = true;
+      connectTarget(t);
+      return;
+    }
+
     if (!targetSent) {
       targetSent = true;
       let t;
       try {
-        t = JSON.parse(payload.toString("utf-8"));
+        t = JSON.parse(data.toString("utf-8"));
       } catch { socket.destroy(); return; }
       if (!t || !t.host || !t.port) { socket.destroy(); return; }
-      dns.lookup(t.host, { family: 4, timeout: 4000 }, (err, address) => {
-        if (err) {
-          try { socket.write(wsFrame(0x2, Buffer.from(JSON.stringify({ error: "dns" })))); } catch { /* ignore */ }
-          socket.destroy();
-          return;
-        }
-        const up = net.connect({ host: address, port: t.port });
-        upstream = up;
-        up.on("connect", () => {
-          try {
-            socket.write(wsFrame(0x2, Buffer.from(JSON.stringify({ ok: true }))));
-          } catch { up.destroy(); }
-        });
-        up.on("data", (d) => {
-          if (!socket.destroyed) upPush(d);
-        });
-        up.on("error", () => socket.destroy());
-        up.on("close", () => socket.destroy());
-      });
+      connectTarget(t);
       return;
     }
 
     if (upstream) {
-      try { upstream.write(payload); } catch { socket.destroy(); }
+      try { upstream.write(data); } catch { socket.destroy(); }
     }
   });
 
