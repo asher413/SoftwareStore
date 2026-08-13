@@ -11,7 +11,9 @@
 
 const http = require("http");
 const https = require("https");
+const net = require("net");
 const dns = require("dns");
+const crypto = require("crypto");
 const { URL } = require("url");
 const { pipeline } = require("stream");
 const { promisify } = require("util");
@@ -645,10 +647,175 @@ function doProxy(targetUrl, method, reqHeaders, bodyBuffer, res) {
 }
 
 // ═══════════════════════════════════════════
+// WebSocket Tunnel (/tunnel) — VPN עוקף חסימות
+// ═══════════════════════════════════════════
+// נטפרי/סננים חוסמים CONNECT ו-HTTP ליעדים חסומים, אבל מאפשרים TLS
+// רגיל לשרת הזה. מנהרת WebSocket מנצלת את זה: בקשת ה-upgrade נראית
+// כמו GET רגיל (עוברת), וה-payload הבינארי של המסגרות אטום למיירט.
+//
+// פרוטוקול: אחרי ה-upgrade, ההודעה הראשונה היא JSON {host, port} של
+// היעד. השרת מתחבר אליו וממסר דו-כיווני (מסגרות בינאריות <-> TCP).
+
+const WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
+function wsAccept(key) {
+  return crypto.createHash("sha1").update(key + WS_GUID).digest("base64");
+}
+
+// מסגרת WebSocket משרת ללקוח (ללא mask, לפי RFC 6455)
+function wsFrame(opcode, payload) {
+  const len = payload.length;
+  let header;
+  if (len < 126) {
+    header = Buffer.from([0x80 | opcode, len]);
+  } else if (len < 65536) {
+    header = Buffer.alloc(4);
+    header[0] = 0x80 | opcode;
+    header[1] = 126;
+    header.writeUInt16BE(len, 2);
+  } else {
+    header = Buffer.alloc(10);
+    header[0] = 0x80 | opcode;
+    header[1] = 127;
+    header.writeBigUInt64BE(BigInt(len), 2);
+  }
+  return Buffer.concat([header, payload]);
+}
+
+// מפענח מסגרות מלקוח (with mask)
+class WsFrameParser {
+  constructor(onFrame) {
+    this.buf = Buffer.alloc(0);
+    this.onFrame = onFrame;
+  }
+  push(chunk) {
+    if (!chunk || chunk.length === 0) return;
+    this.buf = Buffer.concat([this.buf, chunk]);
+    while (true) {
+      const frame = this._tryParse();
+      if (!frame) break;
+      this.onFrame(frame.opcode, frame.payload);
+    }
+  }
+  _tryParse() {
+    const b = this.buf;
+    if (b.length < 2) return null;
+    const opcode = b[0] & 0x0f;
+    const masked = (b[1] & 0x80) !== 0;
+    let len = b[1] & 0x7f;
+    let off = 2;
+    if (len === 126) {
+      if (b.length < 4) return null;
+      len = b.readUInt16BE(2);
+      off = 4;
+    } else if (len === 127) {
+      if (b.length < 10) return null;
+      const big = b.readBigUInt64BE(2);
+      if (big > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+      len = Number(big);
+      off = 10;
+    }
+    let maskKey = null;
+    if (masked) {
+      if (b.length < off + 4) return null;
+      maskKey = b.slice(off, off + 4);
+      off += 4;
+    }
+    if (b.length < off + len) return null;
+    let payload = b.slice(off, off + len);
+    this.buf = b.slice(off + len);
+    if (masked && maskKey) {
+      const out = Buffer.alloc(payload.length);
+      for (let i = 0; i < payload.length; i++) {
+        out[i] = payload[i] ^ maskKey[i & 3];
+      }
+      payload = out;
+    }
+    return { opcode, payload };
+  }
+}
+
+function handleWsTunnel(req, socket, head) {
+  const url = new URL(req.url, "http://x");
+  if (url.pathname !== "/tunnel") {
+    socket.destroy();
+    return;
+  }
+  const key = req.headers["sec-websocket-key"];
+  if (!key) {
+    socket.destroy();
+    return;
+  }
+
+  socket.write(
+    "HTTP/1.1 101 Switching Protocols\r\n" +
+    "Upgrade: websocket\r\n" +
+    "Connection: Upgrade\r\n" +
+    `Sec-WebSocket-Accept: ${wsAccept(key)}\r\n\r\n`
+  );
+
+  let upstream = null;
+  let targetSent = false;
+
+  const parser = new WsFrameParser((opcode, payload) => {
+    if (opcode === 0x8) { // close
+      socket.destroy();
+      return;
+    }
+    if (opcode === 0x9) { // ping → pong
+      try { socket.write(wsFrame(0xA, payload)); } catch { /* ignore */ }
+      return;
+    }
+    if (opcode === 0xA) return; // pong
+
+    if (!targetSent) {
+      targetSent = true;
+      let t;
+      try {
+        t = JSON.parse(payload.toString("utf-8"));
+      } catch { socket.destroy(); return; }
+      if (!t || !t.host || !t.port) { socket.destroy(); return; }
+      dns.lookup(t.host, { family: 4, timeout: 4000 }, (err, address) => {
+        if (err) {
+          try { socket.write(wsFrame(0x2, Buffer.from(JSON.stringify({ error: "dns" })))); } catch { /* ignore */ }
+          socket.destroy();
+          return;
+        }
+        const up = net.connect({ host: address, port: t.port });
+        upstream = up;
+        up.on("connect", () => {
+          try {
+            socket.write(wsFrame(0x2, Buffer.from(JSON.stringify({ ok: true }))));
+          } catch { up.destroy(); }
+        });
+        up.on("data", (d) => {
+          if (!socket.destroyed) {
+            try { socket.write(wsFrame(0x2, d)); } catch { /* ignore */ }
+          }
+        });
+        up.on("error", () => socket.destroy());
+        up.on("close", () => socket.destroy());
+      });
+      return;
+    }
+
+    if (upstream) {
+      try { upstream.write(payload); } catch { socket.destroy(); }
+    }
+  });
+
+  if (head && head.length) parser.push(head);
+  socket.on("data", (d) => parser.push(d));
+  socket.on("close", () => { if (upstream) upstream.destroy(); });
+  socket.on("error", () => { if (upstream) upstream.destroy(); });
+}
+
+// ═══════════════════════════════════════════
 // Start
 // ═══════════════════════════════════════════
 
 const server = http.createServer(handleRequest);
+server.on("upgrade", handleWsTunnel);
 server.keepAliveTimeout = 65_000;
 server.headersTimeout = 66_000;
 server.maxHeadersCount = 100;
